@@ -1,0 +1,12 @@
+{
+    "id": "{62665834-2EE8-49AF-A6BE-DE87B690296B}",
+    "name": "Ring Account",
+    "type": 3,
+    "vendor": "Martin Wilkens",
+    "aliases": [],
+    "dependencies": [],
+    "parentRequirements": [],
+    "childRequirements": [],
+    "implemented": [],
+    "prefix": "RIN"
+}

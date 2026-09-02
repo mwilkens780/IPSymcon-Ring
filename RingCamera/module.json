@@ -1,0 +1,12 @@
+{
+    "id": "{495B9F36-36AB-4CF3-BD44-3812C7DA683D}",
+    "name": "Ring Camera",
+    "type": 3,
+    "vendor": "Martin Wilkens",
+    "aliases": [],
+    "dependencies": [],
+    "parentRequirements": [],
+    "childRequirements": [],
+    "implemented": [],
+    "prefix": "RINC"
+}

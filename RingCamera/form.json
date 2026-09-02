@@ -1,0 +1,42 @@
+{
+  "elements": [
+    {
+      "type": "SelectInstance",
+      "name": "account_instance",
+      "caption": "Ring-Konto (Ring Account Instanz)"
+    },
+    {
+      "type": "NumberSpinner",
+      "name": "device_id",
+      "caption": "Geräte-ID",
+      "minimum": 0
+    },
+    {
+      "type": "Label",
+      "caption": "Die Geräte-ID steht im Log, nachdem in der Ring-Account-Instanz auf 'Geräte auflisten' geklickt wurde."
+    },
+    {
+      "type": "NumberSpinner",
+      "name": "update_interval",
+      "caption": "Aktualisierungsintervall (Sekunden)",
+      "minimum": 60,
+      "suffix": "s"
+    },
+    {
+      "type": "Label",
+      "caption": "Jedes Intervall wird ein frisches Standbild abgerufen (mehrere HTTP-Aufrufe pro Kamera) -- bei mehreren Kameras das Intervall nicht zu knapp wählen."
+    }
+  ],
+  "actions": [
+    {
+      "type": "Button",
+      "caption": "Jetzt aktualisieren",
+      "onClick": "RINC_Refresh($id);"
+    }
+  ],
+  "status": [
+    { "code": 102, "icon": "active",   "caption": "Aktiv" },
+    { "code": 200, "icon": "error",    "caption": "Fehler – Details im IPS-Log" },
+    { "code": 201, "icon": "inactive", "caption": "Nicht konfiguriert – Ring-Konto und Geräte-ID eintragen" }
+  ]
+}

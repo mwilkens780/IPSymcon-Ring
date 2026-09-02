@@ -1,0 +1,62 @@
+{
+  "elements": [
+    {
+      "type": "ValidationTextBox",
+      "name": "email",
+      "caption": "Ring-E-Mail-Adresse"
+    },
+    {
+      "type": "PasswordTextBox",
+      "name": "password",
+      "caption": "Passwort"
+    },
+    {
+      "type": "Label",
+      "caption": "Die gleichen Zugangsdaten wie in der Ring-App. Ring bietet keine offizielle API an -- dieses Modul nutzt die gleiche inoffizielle Anmeldung wie die Community-Bibliothek python-ring-doorbell / Home-Assistant-Integration."
+    },
+    {
+      "type": "Button",
+      "caption": "Anmelden",
+      "onClick": "echo RIN_StartLogin($id);"
+    },
+    {
+      "type": "ExpansionPanel",
+      "caption": "Bestätigungscode (nur falls von Ring angefordert)",
+      "expanded": false,
+      "items": [
+        {
+          "type": "Label",
+          "caption": "Meldet die Anmeldung 'Bestätigungscode erforderlich': den per SMS/E-Mail/App zugesendeten Code unten eintragen und bestätigen."
+        },
+        {
+          "type": "ValidationTextBox",
+          "name": "otp_code",
+          "caption": "Bestätigungscode"
+        },
+        {
+          "type": "Button",
+          "caption": "Code bestätigen",
+          "onClick": "echo RIN_SubmitOtp($id, $otp_code);"
+        }
+      ]
+    },
+    {
+      "type": "Button",
+      "caption": "Zurücksetzen (erneute Anmeldung erzwingen)",
+      "onClick": "RIN_ResetAuth($id);"
+    }
+  ],
+  "actions": [
+    {
+      "type": "Button",
+      "caption": "Geräte auflisten",
+      "onClick": "echo RIN_ListDevices($id);"
+    }
+  ],
+  "status": [
+    { "code": 102, "icon": "active",   "caption": "Angemeldet" },
+    { "code": 200, "icon": "error",    "caption": "Fehler – Details im IPS-Log" },
+    { "code": 201, "icon": "inactive", "caption": "Nicht konfiguriert – E-Mail-Adresse und Passwort eintragen" },
+    { "code": 202, "icon": "inactive", "caption": "Nicht angemeldet – 'Anmelden' klicken" }
+  ]
+}
