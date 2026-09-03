@@ -3,8 +3,8 @@
     "author": "Martin Wilkens",
     "name": "Ring",
     "description": "Ring-Kameras/Doorbells in IP-Symcon einbinden, anzeigen und steuern, da Ring keine offizielle API anbietet. Login (inkl. 2FA), Geräteliste, periodisches Standbild, Batteriestatus, Bewegungserkennung ein/aus je Kamera. Kein Live-Video (siehe Modul-Dokumentation).",
-    "version": "1.0",
-    "build": 1,
-    "date": 1788366821,
+    "version": "1.1",
+    "build": 2,
+    "date": 1788464115,
     "url": "https://github.com/mwilkens780/IPSymcon-Ring"
 }

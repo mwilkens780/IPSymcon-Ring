@@ -193,6 +193,14 @@ class RingAccount extends IPSModule
 
     private function handleLoginResult(array $result): string
     {
+        // Ring's 2FA response has no documented/fixed shape (see auth.php
+        // docblock) -- every non-'ok' outcome is logged with the raw HTTP
+        // response so a misclassified result is diagnosable from the log
+        // instead of guessing blind.
+        if (isset($result['diagnostic'])) {
+            $this->LogMessage('Ring Account Login-Antwort (' . $result['status'] . '): ' . $result['diagnostic'], KL_MESSAGE);
+        }
+
         switch ($result['status']) {
             case 'ok':
                 $this->WriteAttributeString('oauth_store', json_encode($result['store']));
@@ -208,7 +216,7 @@ class RingAccount extends IPSModule
                 $this->WriteAttributeBoolean('pending_2fa', false);
                 $this->SetStatus(202);
                 $this->ReloadForm();
-                return 'Anmeldung fehlgeschlagen -- E-Mail/Passwort prüfen.';
+                return 'Anmeldung fehlgeschlagen -- E-Mail/Passwort prüfen. Details im IPS-Log ("Ring Account Login-Antwort").';
         }
     }
 

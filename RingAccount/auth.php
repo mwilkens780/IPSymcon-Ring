@@ -25,10 +25,11 @@ class RingApiAuth
     private const USER_AGENT     = 'IPSymcon-Ring/1.0';
 
     /**
-     * @return array{status:string,store?:array}
-     *   status: 'ok' (store enthaelt access_token/refresh_token/expires_at),
-     *           '2fa_required' (Zugangsdaten korrekt, Code aus SMS/App noetig),
-     *           'invalid_credentials'
+     * @return array{status:string,store?:array,httpStatus?:int,diagnostic?:string}
+     *   'diagnostic' is a short, secret-free preview of Ring's raw response --
+     *   populated on every non-'ok' outcome so a failed login is debuggable
+     *   from the IPS log alone instead of guessing blind (Ring's 2FA
+     *   response has no documented shape, see class docblock).
      */
     public static function login(string $email, string $password, string $hardwareId, ?string $otpCode = null): array
     {
@@ -41,7 +42,7 @@ class RingApiAuth
             $headers[] = '2fa-code: ' . $otpCode;
         }
 
-        $result = self::httpPost(self::OAUTH_ENDPOINT, [
+        [$httpStatus, $result, $rawBody] = self::httpPost(self::OAUTH_ENDPOINT, [
             'grant_type' => 'password',
             'username'   => $email,
             'password'   => $password,
@@ -52,11 +53,13 @@ class RingApiAuth
         if (!empty($result['access_token'])) {
             return ['status' => 'ok', 'store' => self::buildStore($result)];
         }
+
+        $diagnostic = 'HTTP ' . $httpStatus . ': ' . substr($rawBody, 0, 300);
         if (isset($result['error'])) {
-            return ['status' => 'invalid_credentials'];
+            return ['status' => 'invalid_credentials', 'httpStatus' => $httpStatus, 'diagnostic' => $diagnostic];
         }
         // Weder Token noch Fehler -- Ring erwartet den 2FA-Code (siehe Docblock).
-        return ['status' => '2fa_required'];
+        return ['status' => '2fa_required', 'httpStatus' => $httpStatus, 'diagnostic' => $diagnostic];
     }
 
     /** Refreshes an existing token store. Returns the store unchanged when still valid. */
@@ -69,7 +72,7 @@ class RingApiAuth
             throw new \RuntimeException('Kein Refresh-Token – erneute Anmeldung erforderlich.');
         }
 
-        $result = self::httpPost(self::OAUTH_ENDPOINT, [
+        [$httpStatus, $result, $rawBody] = self::httpPost(self::OAUTH_ENDPOINT, [
             'grant_type'    => 'refresh_token',
             'refresh_token' => $store['refresh_token'],
             'client_id'     => self::CLIENT_ID,
@@ -79,7 +82,7 @@ class RingApiAuth
         ], true);
 
         if (empty($result['access_token'])) {
-            throw new \RuntimeException('Token-Refresh fehlgeschlagen: ' . ($result['error_description'] ?? $result['error'] ?? 'unbekannter Fehler'));
+            throw new \RuntimeException("Token-Refresh fehlgeschlagen (HTTP $httpStatus): " . substr($rawBody, 0, 300));
         }
         return self::buildStore($result);
     }
@@ -93,7 +96,7 @@ class RingApiAuth
         ];
     }
 
-    /** @return array<string,mixed> JSON-decoded body (or ['error'=>...] on a transport failure) */
+    /** @return array{0:int,1:array<string,mixed>,2:string} [HTTP-Status, JSON-decoded body (leeres Array bei ungueltigem JSON), Rohkoerper] */
     private static function httpPost(string $url, array $formFields, array $headers, bool $basicAuthClientId): array
     {
         $ch = curl_init();
@@ -110,15 +113,17 @@ class RingApiAuth
             $opts[CURLOPT_USERPWD] = self::CLIENT_ID . ':';
         }
         curl_setopt_array($ch, $opts);
-        $body  = curl_exec($ch);
-        $error = curl_error($ch);
+        $body   = curl_exec($ch);
+        $error  = curl_error($ch);
+        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
         if ($body === false || $error !== '') {
             throw new \RuntimeException("cURL-Fehler bei Ring-Login: $error");
         }
 
-        $data = json_decode((string) $body, true);
-        return is_array($data) ? $data : ['error' => 'invalid_json', 'error_description' => substr((string) $body, 0, 200)];
+        $bodyStr = (string) $body;
+        $data    = json_decode($bodyStr, true);
+        return [$status, is_array($data) ? $data : [], $bodyStr];
     }
 }
