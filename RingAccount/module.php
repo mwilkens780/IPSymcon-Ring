@@ -25,6 +25,7 @@ class RingAccount extends IPSModule
         $this->RegisterAttributeString('oauth_store', '');
         $this->RegisterAttributeString('hardware_id', '');
         $this->RegisterAttributeBoolean('pending_2fa', false);
+        $this->RegisterAttributeString('tsv_state', '');
 
         $this->SetVisualizationType(0);
     }
@@ -60,7 +61,7 @@ class RingAccount extends IPSModule
         if ($this->ReadAttributeBoolean('pending_2fa')) {
             $statusElement = [
                 'type'    => 'Label',
-                'caption' => "Ring hat einen Bestätigungscode per SMS/E-Mail/App gesendet.\nBitte unten eingeben und auf 'Code bestätigen' klicken.",
+                'caption' => $this->twoFaLabel($this->ReadAttributeString('tsv_state')),
             ];
         } elseif (!empty($this->readStore())) {
             $statusElement = ['type' => 'Label', 'caption' => 'Angemeldet.'];
@@ -118,6 +119,7 @@ class RingAccount extends IPSModule
     {
         $this->WriteAttributeString('oauth_store', '');
         $this->WriteAttributeBoolean('pending_2fa', false);
+        $this->WriteAttributeString('tsv_state', '');
         $this->SetStatus(202);
         $this->LogMessage('Ring Account: Auth zurückgesetzt. Bitte erneut anmelden.', KL_MESSAGE);
     }
@@ -210,18 +212,45 @@ class RingAccount extends IPSModule
             case 'ok':
                 $this->WriteAttributeString('oauth_store', json_encode($result['store']));
                 $this->WriteAttributeBoolean('pending_2fa', false);
+                $this->WriteAttributeString('tsv_state', '');
                 $this->SetStatus(102);
                 $this->ReloadForm();
                 return 'Anmeldung erfolgreich.';
             case '2fa_required':
+                $tsvState = $result['tsvState'] ?? '';
                 $this->WriteAttributeBoolean('pending_2fa', true);
+                $this->WriteAttributeString('tsv_state', $tsvState);
                 $this->ReloadForm();
-                return 'Zugangsdaten korrekt. Bitte den per SMS/E-Mail/App zugesendeten Bestätigungscode unten eingeben.' . $suffix;
+                return $this->twoFaLabel($tsvState) . $suffix;
             default:
                 $this->WriteAttributeBoolean('pending_2fa', false);
+                $this->WriteAttributeString('tsv_state', '');
                 $this->SetStatus(202);
                 $this->ReloadForm();
                 return 'Anmeldung fehlgeschlagen -- E-Mail/Passwort prüfen.' . $suffix;
+        }
+    }
+
+    /**
+     * Ring meldet unterschiedliche 2FA-Methoden ueber 'tsv_state' -- 'totp'
+     * bedeutet einen Code aus einer bereits fuer das Ring-Konto eingerichteten
+     * Authenticator-App (Google Authenticator/Authy/...), dabei wird NICHTS
+     * zugestellt (live bestaetigt 03.09.2026: erster Live-Test scheiterte,
+     * weil die vorherige generische "per SMS/E-Mail/App gesendet"-Meldung
+     * das faelschlich als "wird zugestellt" nahelegte). 'sms'/'email' sind
+     * die einzigen Faelle, in denen Ring tatsaechlich etwas verschickt.
+     */
+    private function twoFaLabel(string $tsvState): string
+    {
+        switch ($tsvState) {
+            case 'totp':
+                return "Ring erwartet einen Code aus deiner Authenticator-App (Google Authenticator/Authy/...), die für dieses Ring-Konto eingerichtet ist -- es wird NICHTS zugestellt. Bitte den dort aktuell angezeigten 6-stelligen Code unten eingeben.";
+            case 'sms':
+                return "Ring hat einen Bestätigungscode per SMS gesendet.\nBitte unten eingeben und auf 'Code bestätigen' klicken.";
+            case 'email':
+                return "Ring hat einen Bestätigungscode per E-Mail gesendet.\nBitte unten eingeben und auf 'Code bestätigen' klicken.";
+            default:
+                return "Ring verlangt einen Bestätigungscode (Methode: " . ($tsvState !== '' ? $tsvState : 'unbekannt') . "). Bitte in der Ring-App/Authenticator-App nachsehen und unten eingeben.";
         }
     }
 

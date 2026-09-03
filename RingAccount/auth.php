@@ -25,11 +25,19 @@ class RingApiAuth
     private const USER_AGENT     = 'IPSymcon-Ring/1.0';
 
     /**
-     * @return array{status:string,store?:array,httpStatus?:int,diagnostic?:string}
+     * @return array{status:string,store?:array,httpStatus?:int,diagnostic?:string,tsvState?:string}
      *   'diagnostic' is a short, secret-free preview of Ring's raw response --
      *   populated on every non-'ok' outcome so a failed login is debuggable
      *   from the IPS log alone instead of guessing blind (Ring's 2FA
      *   response has no documented shape, see class docblock).
+     *   'tsvState' (only on '2fa_required'): Ring's own 2FA method tag, e.g.
+     *   'totp' (code from an authenticator app -- NOT sent anywhere, the
+     *   user reads the currently-displayed code) vs 'sms'/'email' (an
+     *   actual code gets sent). Confirmed live 03.09.2026: a Ring account
+     *   with an authenticator app configured returns
+     *   {"tsv_state":"totp","phone":"time-based OTP","next_time_in_secs":60}
+     *   -- no message is sent for this case, unlike the generic wording
+     *   this module showed before that finding.
      */
     public static function login(string $email, string $password, string $hardwareId, ?string $otpCode = null): array
     {
@@ -59,7 +67,12 @@ class RingApiAuth
             return ['status' => 'invalid_credentials', 'httpStatus' => $httpStatus, 'diagnostic' => $diagnostic];
         }
         // Weder Token noch Fehler -- Ring erwartet den 2FA-Code (siehe Docblock).
-        return ['status' => '2fa_required', 'httpStatus' => $httpStatus, 'diagnostic' => $diagnostic];
+        return [
+            'status'     => '2fa_required',
+            'httpStatus' => $httpStatus,
+            'diagnostic' => $diagnostic,
+            'tsvState'   => (string) ($result['tsv_state'] ?? ''),
+        ];
     }
 
     /** Refreshes an existing token store. Returns the store unchanged when still valid. */
