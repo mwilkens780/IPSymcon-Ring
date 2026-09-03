@@ -194,11 +194,16 @@ class RingAccount extends IPSModule
     private function handleLoginResult(array $result): string
     {
         // Ring's 2FA response has no documented/fixed shape (see auth.php
-        // docblock) -- every non-'ok' outcome is logged with the raw HTTP
-        // response so a misclassified result is diagnosable from the log
-        // instead of guessing blind.
+        // docblock) -- every non-'ok' outcome is logged AND appended to the
+        // returned/echoed message so it's visible right in the popup. The
+        // IPS message log floods with unrelated sensor telemetry (multiple
+        // lines/second from OpenDTU etc.), so a rare login-attempt line is
+        // effectively unfindable there in practice -- the popup is the only
+        // reliably visible place for this.
+        $suffix = '';
         if (isset($result['diagnostic'])) {
             $this->LogMessage('Ring Account Login-Antwort (' . $result['status'] . '): ' . $result['diagnostic'], KL_MESSAGE);
+            $suffix = "\n\n[Diagnose] " . $result['diagnostic'];
         }
 
         switch ($result['status']) {
@@ -211,12 +216,12 @@ class RingAccount extends IPSModule
             case '2fa_required':
                 $this->WriteAttributeBoolean('pending_2fa', true);
                 $this->ReloadForm();
-                return 'Zugangsdaten korrekt. Bitte den per SMS/E-Mail/App zugesendeten Bestätigungscode unten eingeben.';
+                return 'Zugangsdaten korrekt. Bitte den per SMS/E-Mail/App zugesendeten Bestätigungscode unten eingeben.' . $suffix;
             default:
                 $this->WriteAttributeBoolean('pending_2fa', false);
                 $this->SetStatus(202);
                 $this->ReloadForm();
-                return 'Anmeldung fehlgeschlagen -- E-Mail/Passwort prüfen. Details im IPS-Log ("Ring Account Login-Antwort").';
+                return 'Anmeldung fehlgeschlagen -- E-Mail/Passwort prüfen.' . $suffix;
         }
     }
 
