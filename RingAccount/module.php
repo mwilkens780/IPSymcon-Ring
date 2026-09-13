@@ -161,9 +161,12 @@ class RingAccount extends IPSModule
             return '';
         }
 
+        $this->LogMessage('Ring Account DEBUG raw device: ' . json_encode($device), KL_MESSAGE);
+
         $battery = $device['battery_life'] ?? null;
         return json_encode([
             'battery'        => $battery !== null ? (int) $battery : null,
+            'external'       => (bool) ($device['external_connection'] ?? false),
             'motionDetection' => (bool) ($device['settings']['motion_detection_enabled'] ?? false),
         ]);
     }

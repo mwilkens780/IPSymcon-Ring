@@ -97,9 +97,7 @@ class RingCamera extends IPSModule
                 $this->SetStatus(200);
                 return;
             }
-            if ($data['battery'] !== null) {
-                $this->SetValue('battery', (int) $data['battery']);
-            }
+            $this->applyBatteryState((bool) ($data['external'] ?? false), $data['battery']);
             $this->SetValue('motion_detection', (bool) $data['motionDetection']);
 
             $this->takeSnapshot();
@@ -108,6 +106,34 @@ class RingCamera extends IPSModule
         } catch (\Throwable $e) {
             $this->LogMessage('RingCamera Refresh: ' . $e->getMessage(), KL_ERROR);
             $this->SetStatus(200);
+        }
+    }
+
+    /**
+     * Ring meldet ueber `external_connection`, ob eine Stickup Cam dauerhaft
+     * an eine Stromversorgung angeschlossen ist statt per Akku zu laufen --
+     * in dem Fall gibt es keinen sinnvollen Ladezustand, die `battery`-
+     * Variable wird entfernt. Das ist der einzige Signalweg: CameraDashboard
+     * blendet die Batterie-Anzeige bereits aus, wenn die Variable fehlt
+     * (identisches Verhalten wie bei Blink-Kameras ohne Akku-Reporting), und
+     * der Profile/Battery Monitor im Alarm Dashboard scannt nach Variablen
+     * mit dem `~Battery.100`-Profil -- ohne Variable also auch kein Fehlalarm
+     * fuer eine Kamera, die den Akku gar nicht braucht.
+     */
+    private function applyBatteryState(bool $externallyPowered, ?int $batteryPercent): void
+    {
+        $batteryId = @IPS_GetObjectIDByIdent('battery', $this->InstanceID);
+
+        if ($externallyPowered) {
+            if ($batteryId !== false) {
+                $this->UnregisterVariable('battery');
+            }
+            return;
+        }
+
+        $this->RegisterVariableInteger('battery', $this->Translate('Batterie'), '~Battery.100', 1);
+        if ($batteryPercent !== null) {
+            $this->SetValue('battery', $batteryPercent);
         }
     }
 
