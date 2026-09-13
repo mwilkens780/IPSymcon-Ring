@@ -127,6 +127,7 @@ class RingCamera extends IPSModule
         if ($externallyPowered) {
             if ($batteryId !== false) {
                 $this->UnregisterVariable('battery');
+                $this->LogMessage('RingCamera: dauerhafte Stromversorgung erkannt, Batterie-Variable entfernt.', KL_MESSAGE);
             }
             return;
         }
