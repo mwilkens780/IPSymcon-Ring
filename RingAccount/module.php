@@ -161,14 +161,31 @@ class RingAccount extends IPSModule
             return '';
         }
 
-        $this->LogMessage('Ring Account DEBUG raw device: ' . json_encode($device), KL_MESSAGE);
-
         $battery = $device['battery_life'] ?? null;
         return json_encode([
             'battery'        => $battery !== null ? (int) $battery : null,
-            'external'       => (bool) ($device['external_connection'] ?? false),
+            'external'       => $this->isExternallyPowered($device),
             'motionDetection' => (bool) ($device['settings']['motion_detection_enabled'] ?? false),
         ]);
+    }
+
+    /**
+     * Ring surfaces "dauerhaft an Strom" differently depending on device kind,
+     * verified against a live account (Stand 13.09.2026):
+     *  - Stick-up-Cams melden das per `external_connection` (Stecker-Netzteil).
+     *  - Doorbells (kind `lpd_v4` etc., eigentlich batteriebetrieben) melden
+     *    stattdessen `health.transformer_voltage`/`transformer_status`, wenn
+     *    sie an eine bestehende Klingel-Trafo-Verkabelung (16-24V AC)
+     *    angeschlossen sind -- `external_connection` bleibt bei denen auch am
+     *    Trafo dauerhaft `false`. Beide Signale zaehlen als "kein Akku noetig".
+     */
+    private function isExternallyPowered(array $device): bool
+    {
+        if ((bool) ($device['external_connection'] ?? false)) {
+            return true;
+        }
+        $transformerVoltage = $device['health']['transformer_voltage'] ?? null;
+        return $transformerVoltage !== null && (float) $transformerVoltage > 0;
     }
 
     public function SetMotionDetection(int $deviceId, bool $enabled): bool
